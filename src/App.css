@@ -64,6 +64,10 @@
     margin-right: 5px;
 }
 
+.green {
+    color: #04d1c2
+}
+
 .hidden {
     display: none;
 }
@@ -107,4 +111,13 @@
 .server_role_container{
     display: flex;
     align-items: center;
+}
+
+.resource_tree_parent_info {
+    display: flex;
+    justify-content: space-between;
+}
+
+.resource_tree_status {
+    text-align: center;
 }
