@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Appbar from '../../components/Appbar';
-import Sidebar from '../../components/Sidebar';
 import Logout from '../../views/Logout';
 import { makeStyles } from '@material-ui/core';
 import { useServer } from '../../contexts/ServerContext';
@@ -36,7 +34,11 @@ function ResourceTreeView() {
         if (rescContext.total !== 0) {
             let childrenMap = new Map();
             let dataMap = new Map();
-            dataMap.set("", ["tempZone"])
+            let tempZoneData = ['tempZone'];
+            for (let i = 0; i < 11; i++) {
+                tempZoneData.push('')
+            }
+            dataMap.set("", tempZoneData)
 
             rescContext._embedded.forEach(resc => {
                 dataMap.set(resc[11], resc);
@@ -53,15 +55,8 @@ function ResourceTreeView() {
     }, [rescContext])
 
     return (
-        <div className={classes.root}>
-            <Appbar />
-            <Sidebar menu_id="3" />
-            <main className={classes.content}>
-                <div className={classes.toolbar} />
-                <div className={classes.main}>
-                    {dataMap !== undefined && <Tree data={dataMap} children={childrenMap} />}
-                </div>
-            </main>
+        <div>
+            {dataMap !== undefined && <Tree data={dataMap} children={childrenMap} />}
         </div>
     )
 }
