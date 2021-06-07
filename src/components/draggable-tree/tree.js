@@ -2,7 +2,12 @@ import React, { useEffect, useState } from 'react';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import TreeView from '@material-ui/lab/TreeView';
 import { StyledTreeItem } from './tree-item';
-import { Button } from '@material-ui/core';
+import { Badge, Button } from '@material-ui/core';
+import UndoIcon from '@material-ui/icons/Undo'
+import RedoIcon from '@material-ui/icons/Redo';
+import ReplayIcon from '@material-ui/icons/Replay';
+import SaveIcon from '@material-ui/icons/Save';
+import LowPriorityIcon from '@material-ui/icons/LowPriority';
 import axios from 'axios';
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@material-ui/core';
 
@@ -33,32 +38,53 @@ function CloseSquare(props) {
     );
 }
 
+function replacer(key, value) {
+    if (value instanceof Map) {
+        return {
+            dataType: 'Map',
+            value: Array.from(value.entries()), // or with spread: value: [...value]
+        };
+    } else {
+        return value;
+    }
+}
+function reviver(key, value) {
+    if(typeof value === 'object' && value !== null) {
+      if (value.dataType === 'Map') {
+        return new Map(value.value);
+      }
+    }
+    return value;
+  }
+
+
 export const Tree = (props) => {
     let childrenMap = props.children;
     let dataMap = props.data;
-    const [stagingMap, setStagingMap] = useState(new Map(childrenMap));
-    const [currNode, setCurrNode] = useState();
+    let originalChildrenMap = JSON.stringify(childrenMap, replacer);
+    let originalDataMap = JSON.stringify(dataMap, replacer);
+    const [stagedChildrenMap, setStagedChildrenMap] = useState(JSON.parse(originalChildrenMap, reviver));
+    const [stagedDataMap, setStagedDataMap] = useState(JSON.parse(originalDataMap, reviver));
+    const [redo, setRedo] = useState([]);
+    const [tasks, setTasks] = useState([]);
     const [newParentNode, setNewParentNode] = useState();
-    const [prevParentNode, setPrevParentNode] = useState();
     const [confirmDialog, setConfirmDialog] = useState(false);
     const [isRemoved, setIsRemoved] = useState(false);
     const [isAdded, setIsAdded] = useState(false);
 
-    const dragndropController = async () => {
-        console.log(prevParentNode)
-        console.log(currNode)
-        let stagedPrevParentList = stagingMap.get(prevParentNode[11]);
-        for (let i = 0; i < stagedPrevParentList.length; i++) {
-            if (stagedPrevParentList[i][11] == currNode[11]) {
-                stagedPrevParentList.splice(i, 1);
-            }
-        }
-        stagingMap.set(prevParentNode[11], stagedPrevParentList)
-        let stagedNewParentList = stagingMap.has(newParentNode[11]) ? stagingMap.get(newParentNode[11]) : [];
-        stagedNewParentList.push(currNode)
-        stagingMap.set(newParentNode[11], stagedNewParentList);
+    const dragndropController = async (curr, prev) => {
+        let new_tasks = tasks;
+        let currNode = curr;
+        let prevParentNode = prev;
+        console.log("moving " + currNode[11] + " prev parent " + prevParentNode[11] + " new parent " + newParentNode[11])
 
-        console.log(stagingMap);
+        updateParentID(currNode, newParentNode);
+
+        removeChild(prevParentNode, currNode);
+
+        addChild(newParentNode, currNode);
+
+        new_tasks.push([currNode, prevParentNode, newParentNode]);
 
         // if (prevParentNode !== 'tempZone') {
         //     const rm_child_response = await axios({
@@ -94,19 +120,70 @@ export const Tree = (props) => {
         // }
         // setIsAdded(true);
         // setTimeout(() => { window.location.reload() }, 1000);
-        setConfirmDialog(false);
+        //setConfirmDialog(false);
+    }
+
+    const updateParentID = (node, parent) => {
+        let new_stagedDataMap = new Map(stagedDataMap);
+        node[10] = parent[11];
+        new_stagedDataMap.set(node[11], node);
+        setStagedDataMap(new_stagedDataMap);
+    }
+
+    const addChild = (parent, child) => {
+        let new_stagedChildrenMap = new Map(stagedChildrenMap);
+        let stagedNewParentList = stagedChildrenMap.has(parent[11]) ? stagedChildrenMap.get(parent[11]) : [];
+        stagedNewParentList.push(child)
+        new_stagedChildrenMap.set(parent[11], stagedNewParentList);
+        setStagedChildrenMap(new_stagedChildrenMap);
+    }
+
+    const removeChild = (parent, child) => {
+        let new_stagedChildrenMap = new Map(stagedChildrenMap);
+        let stagedPrevParentList = stagedChildrenMap.get(parent[11]);
+        for (let i = stagedPrevParentList.length - 1; i >= 0; i--) {
+            if (stagedPrevParentList[i][11] == child[11]) {
+                stagedPrevParentList.splice(i, 1);
+            }
+        }
+        new_stagedChildrenMap.set(parent[11], stagedPrevParentList)
+        setStagedChildrenMap(new_stagedChildrenMap);
+    }
+
+    const undoTask = () => {
+        let lastTask = tasks[tasks.length - 1];
+        addChild(lastTask[1], lastTask[0])
+        removeChild(lastTask[2], lastTask[0]);
+        setRedo([...redo, lastTask]);
+        setTasks(tasks.filter((task, i) => i !== tasks.length - 1))
+    }
+
+    const redoTask = () => {
+        let lastUndoTask = redo[redo.length - 1];
+        addChild(lastUndoTask[2], lastUndoTask[0]);
+        removeChild(lastUndoTask[1], lastUndoTask[0]);
+        setTasks([...tasks, lastUndoTask]);
+        setRedo(redo.filter(task => task !== lastUndoTask))
+    }
+
+    const resetTree = () => {
+        setStagedDataMap(JSON.parse(originalDataMap, reviver));
+        setStagedChildrenMap(JSON.parse(originalChildrenMap, reviver));
+        setRedo([]);
+        setTasks([]);
     }
 
     const renderTreeNode = (node) => {
         const nodeId = node[0] === 'tempZone' ? "" : node[11];
 
         const handleDragEnd = (e) => {
-            if (node[0] === e.target.children[0].children[1].innerHTML) {
-                setCurrNode(node);
-                setPrevParentNode(dataMap.get(node[10]));
-                setConfirmDialog(true);
+            if (newParentNode !== undefined && node[0] === e.target.children[0].children[1].innerHTML && node[11] !== newParentNode[11]) {
+                // setCurrNode(node);
+                // setPrevParentNode(dataMap.get(node[10]));
+                dragndropController(node, stagedDataMap.get(node[10]));
+                // setConfirmDialog(true);
+                console.log("Drag start " + node[11])
             }
-            console.log("Drag start " + node[0])
         }
 
         const handleDragOver = (e) => {
@@ -116,31 +193,60 @@ export const Tree = (props) => {
         const handleDrop = (e) => {
             if (e.target.innerHTML === node[0]) {
                 setNewParentNode(node);
+                console.log("Drop at " + node[11])
             }
-            console.log("Drop at " + node[0])
-        };
+        }
+
         return (
             <StyledTreeItem
                 nodeId={nodeId}
                 label={node[0]}
+                draggable={node[11] === '' ? false : true}
                 onDragEnd={e => handleDragEnd(e)}
                 onDragOver={e => handleDragOver(e)}
                 onDrop={(e) => handleDrop(e)}>
-                {childrenMap.has(nodeId) && childrenMap.get(nodeId).map(children => renderTreeNode(children))}
+                {stagedChildrenMap.has(nodeId) && stagedChildrenMap.get(nodeId).map(children => renderTreeNode(children))}
             </StyledTreeItem>
         )
     }
 
     useEffect(() => {
-        renderTreeNode(dataMap.get(""))
-    },[stagingMap])
+        renderTreeNode(stagedDataMap.get(""))
+    }, [stagedChildrenMap])
 
     return (
-        <TreeView
-            defaultExpanded={['1']}
-            defaultCollapseIcon={<MinusSquare />}
-            defaultExpandIcon={<PlusSquare />}
-            defaultEndIcon={<CloseSquare />}
-        >{renderTreeNode(dataMap.get(""))}<Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}><DialogTitle>Are you sure to make the following changes? </DialogTitle><DialogContent><div>Current Resource Name: </div><hr /><div className="resource_tree_parent_info"><span>Remove Previous Parent: </span> {isRemoved ? <span className="green">Complete</span> : <span>Awaiting</span>}</div><div className="resource_tree_parent_info"><span>Add New Parent: </span>{isAdded ? <span className="green">Complete</span> : <span>Awaiting</span>}</div></DialogContent>{isAdded && isRemoved ? <span className="resource_tree_status">Refreshing your page...</span> : ""}<DialogActions><Button color="primary" onClick={dragndropController}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions></Dialog></TreeView>
+        <div>
+            <div className="resource_tree_header">
+                <Button disabled={tasks.length === 0} startIcon={<UndoIcon />} onClick={undoTask}>Undo</Button>
+                <Button disabled={redo.length === 0} startIcon={<RedoIcon />} onClick={redoTask}>Redo</Button>
+                <Button startIcon={<ReplayIcon />} onClick={resetTree}>Reset</Button>
+                <Button disabled={tasks.length === 0} startIcon={<SaveIcon />}>Save</Button>
+            </div>
+            <div className="resource_tree_container">
+                <div className="resource_tree">
+                    <TreeView
+                        defaultExpanded={['1']}
+                        defaultCollapseIcon={<MinusSquare />}
+                        defaultExpandIcon={<PlusSquare />}
+                        defaultEndIcon={<CloseSquare />}
+                    >{renderTreeNode(stagedDataMap.get(""))}
+                    </TreeView>
+                </div>
+                <div className="resource_tree_notifcations">
+                    <h3>Staged Changes <Badge badgeContent={tasks.length} color="primary"><LowPriorityIcon /></Badge></h3>
+                    <div>
+                        {tasks.map(task => <div>
+                            {task[0][0]} parent: {task[1][0]} -> {task[2][0]}
+                        </div>)}
+                    </div>
+                    <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}>
+                        <DialogTitle>Are you sure to make the following changes? </DialogTitle>
+                        <DialogContent><div>Current Resource Name: </div><hr /><div className="resource_tree_parent_info"><span>Remove Previous Parent: </span> {isRemoved ? <span className="green">Complete</span> : <span>Awaiting</span>}</div><div className="resource_tree_parent_info"><span>Add New Parent: </span>{isAdded ? <span className="green">Complete</span> : <span>Awaiting</span>}</div></DialogContent>
+                        {isAdded && isRemoved ? <span className="resource_tree_status">Refreshing your page...</span> : ""}
+                        <DialogActions><Button color="primary" onClick={dragndropController}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>
+                    </Dialog>
+                </div>
+            </div>
+        </div>
     )
 }

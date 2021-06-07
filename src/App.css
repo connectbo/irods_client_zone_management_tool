@@ -113,9 +113,27 @@
     align-items: center;
 }
 
+.resource_tree_header {
+    
+}
+
 .resource_tree_parent_info {
     display: flex;
     justify-content: space-between;
+}
+
+.resource_tree_container {
+    display: flex;
+}
+
+.resource_tree {
+    flex: 1 0 80%;
+    margin: 10px;
+}
+
+.resource_tree_notifcations {
+    width: 400px;
+    font-size: 14px;
 }
 
 .resource_tree_status {
