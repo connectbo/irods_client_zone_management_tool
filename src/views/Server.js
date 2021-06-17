@@ -83,7 +83,7 @@ function Server() {
     const [tabValue, setTabValue] = useState(0);
     const [openDetails, setOpenDetails] = useState(false);
     const [currServer, setCurrServer] = useState();
-    const [order, setOrder] = useState("asc");
+    const [order, setOrder] = useState("desc");
     const [orderBy, setOrderBy] = useState("role");
 
     useEffect(() => {
