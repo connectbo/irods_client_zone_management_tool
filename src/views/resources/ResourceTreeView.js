@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import Logout from '../../views/Logout';
+import Appbar from '../../components/Appbar';
+import Sidebar from '../../components/Sidebar';
 import { makeStyles } from '@material-ui/core';
 import { useServer } from '../../contexts/ServerContext';
 import { Tree } from '../../components/draggable-tree/tree';
+import { navigate } from '@reach/router';
+import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
+import ListIcon from '@material-ui/icons/List';
+import AccountTreeIcon from '@material-ui/icons/AccountTree';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -26,6 +32,7 @@ function ResourceTreeView() {
         return <Logout />
     }
     const classes = useStyles();
+    const [tab, setTab] = useState('tree');
     const { zoneName, rescContext, loadResource } = useServer();
     const [childrenMap, setChildrenMap] = useState();
     const [dataMap, setDataMap] = useState();
@@ -55,8 +62,19 @@ function ResourceTreeView() {
     }, [rescContext])
 
     return (
-        <div>
-            {dataMap !== undefined && <Tree data={dataMap} children={childrenMap} />}
+        <div className={classes.root}>
+            <Appbar />
+            <Sidebar menu_id="3" />
+            <main className={classes.content}>
+                <div className={classes.toolbar} />
+                <div className={classes.main}>
+                    <ToggleButtonGroup className={classes.tabGroup} size="small" value={tab}>
+                        <ToggleButton value="list" aria-label="list" onClick={() => navigate('/resources')}><ListIcon /></ToggleButton>
+                        <ToggleButton value="tree" aria-label="tree" onClick={() => navigate('/resources/tree')}><AccountTreeIcon /></ToggleButton>
+                    </ToggleButtonGroup>
+                    {dataMap !== undefined && <Tree data={dataMap} children={childrenMap} />}
+                </div>
+            </main>
         </div>
     )
 }
