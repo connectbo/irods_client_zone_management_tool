@@ -8,7 +8,8 @@ import RedoIcon from '@material-ui/icons/Redo';
 import ReplayIcon from '@material-ui/icons/Replay';
 import SaveIcon from '@material-ui/icons/Save';
 import LowPriorityIcon from '@material-ui/icons/LowPriority';
-import axios from 'axios';
+import { useEnvironment } from '../../contexts/EnvironmentContext';
+import { AddChildRescourceController, RemoveChildRescourceController } from '../../controllers/ResourceController';
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@material-ui/core';
 
 function MinusSquare(props) {
@@ -49,13 +50,13 @@ function replacer(key, value) {
     }
 }
 function reviver(key, value) {
-    if(typeof value === 'object' && value !== null) {
-      if (value.dataType === 'Map') {
-        return new Map(value.value);
-      }
+    if (typeof value === 'object' && value !== null) {
+        if (value.dataType === 'Map') {
+            return new Map(value.value);
+        }
     }
     return value;
-  }
+}
 
 
 export const Tree = (props) => {
@@ -63,14 +64,14 @@ export const Tree = (props) => {
     let dataMap = props.data;
     let originalChildrenMap = JSON.stringify(childrenMap, replacer);
     let originalDataMap = JSON.stringify(dataMap, replacer);
+    const { restApiLocation } = useEnvironment();
     const [stagedChildrenMap, setStagedChildrenMap] = useState(JSON.parse(originalChildrenMap, reviver));
     const [stagedDataMap, setStagedDataMap] = useState(JSON.parse(originalDataMap, reviver));
     const [redo, setRedo] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [newParentNode, setNewParentNode] = useState();
     const [confirmDialog, setConfirmDialog] = useState(false);
-    const [isRemoved, setIsRemoved] = useState(false);
-    const [isAdded, setIsAdded] = useState(false);
+    const [isComplete, setIsComplete] = useState(false);
 
     const dragndropController = async (curr, prev) => {
         let new_tasks = tasks;
@@ -84,43 +85,38 @@ export const Tree = (props) => {
 
         addChild(newParentNode, currNode);
 
-        new_tasks.push([currNode, prevParentNode, newParentNode]);
+        new_tasks.push([currNode, prevParentNode, newParentNode, 'pending']);
+    }
 
-        // if (prevParentNode !== 'tempZone') {
-        //     const rm_child_response = await axios({
-        //         method: 'POST',
-        //         url: `http://54.210.60.122:80/irods-rest/1.0.0/admin`,
-        //         headers: {
-        //             'Authorization': localStorage.getItem('zmt-token')
-        //         },
-        //         params: {
-        //             action: 'rm',
-        //             target: 'childfromresc',
-        //             arg2: prevParentNode,
-        //             arg3: currNode
-        //         }
-        //     });
-        // }
-        // setIsRemoved(true);
-        // if (newParentNode !== 'tempZone') {
-        //     const add_child_response = await axios({
-        //         method: 'POST',
-        //         url: `http://54.210.60.122:80/irods-rest/1.0.0/admin`,
-        //         headers: {
-        //             'Authorization': localStorage.getItem('zmt-token')
-        //         },
-        //         params: {
-        //             action: 'add',
-        //             target: 'childtoresc',
-        //             arg2: newParentNode,
-        //             arg3: currNode,
-        //             arg4: 'add_child'
-        //         }
-        //     });
-        // }
-        // setIsAdded(true);
-        // setTimeout(() => { window.location.reload() }, 1000);
-        //setConfirmDialog(false);
+    const runTask = () => {
+        const tasks_copy = [...tasks];
+        (async function asyncProcessTask() {
+            for (let task of tasks_copy) {
+                let status = true;
+                try {
+                    if (task[1][0] !== 'tempZone') {
+                        const remove_child_result = await RemoveChildRescourceController(task[1][0], task[0][0], restApiLocation);
+                        console.log(remove_child_result);
+                    }
+                    if (task[2][0] !== 'tempZone') {
+                        const add_child_result = await AddChildRescourceController(task[2][0], task[0][0], restApiLocation);
+                        console.log(add_child_result);
+                    }
+                } catch (e) {
+                    status = false;
+                }
+                if (status) task[3] = 'success'
+                else {
+                    task[3] = 'failed'
+                    setTasks(tasks_copy)
+                    setIsComplete(false)
+                    break;
+                }
+            }
+            setTasks(tasks_copy)
+            setIsComplete(true)
+            setTimeout(() => window.location.reload(), 1000)
+        })()
     }
 
     const updateParentID = (node, parent) => {
@@ -217,11 +213,15 @@ export const Tree = (props) => {
     return (
         <div>
             <div className="resource_tree_header">
-                <Button disabled={tasks.length === 0} startIcon={<UndoIcon />} onClick={undoTask}>Undo</Button>
-                <Button disabled={redo.length === 0} startIcon={<RedoIcon />} onClick={redoTask}>Redo</Button>
-                <Button startIcon={<ReplayIcon />} onClick={resetTree}>Reset</Button>
-                <Button disabled={tasks.length === 0} startIcon={<SaveIcon />}>Save</Button>
+                <div className="resource_tree_header_left">
+                    <Button disabled={tasks.length === 0} startIcon={<UndoIcon />} onClick={undoTask}>Undo</Button>
+                    <Button disabled={redo.length === 0} startIcon={<RedoIcon />} onClick={redoTask}>Redo</Button>
+                </div><div className="resource_tree_header_right">
+                    <Button color="secondary" startIcon={<ReplayIcon />} onClick={resetTree}>Reset</Button>
+                    <Button color="primary" disabled={tasks.length === 0} startIcon={<SaveIcon />} onClick={() => setConfirmDialog(true)}>Save</Button>
+                </div>
             </div>
+            <hr />
             <div className="resource_tree_container">
                 <div className="resource_tree">
                     <TreeView
@@ -241,9 +241,15 @@ export const Tree = (props) => {
                     </div>
                     <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}>
                         <DialogTitle>Are you sure to make the following changes? </DialogTitle>
-                        <DialogContent><div>Current Resource Name: </div><hr /><div className="resource_tree_parent_info"><span>Remove Previous Parent: </span> {isRemoved ? <span className="green">Complete</span> : <span>Awaiting</span>}</div><div className="resource_tree_parent_info"><span>Add New Parent: </span>{isAdded ? <span className="green">Complete</span> : <span>Awaiting</span>}</div></DialogContent>
-                        {isAdded && isRemoved ? <span className="resource_tree_status">Refreshing your page...</span> : ""}
-                        <DialogActions><Button color="primary" onClick={dragndropController}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>
+                        <DialogContent>
+                            {tasks.map((task, index) => <div className="resource_tree_parent_info">
+                                <span>{task[0][0]} parent: {task[1][0]} -> {task[2][0]}</span>
+                                {task[3] === 'pending' ? <span className="resource_tree_status">Awaiting</span> : (task[3] === 'success' ? <span className="green resource_tree_status">Complete</span> : <span className="red resource_tree_status">Failed</span>)}
+                            </div>
+                            )}
+                        </DialogContent>
+                        {isComplete ? <span className="resource_tree_status">Refreshing your page...</span> : ""}
+                        <DialogActions><Button color="primary" onClick={runTask}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>
                     </Dialog>
                 </div>
             </div>
