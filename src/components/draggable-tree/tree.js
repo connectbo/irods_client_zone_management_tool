@@ -72,6 +72,7 @@ export const Tree = (props) => {
     const [newParentNode, setNewParentNode] = useState();
     const [confirmDialog, setConfirmDialog] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
+    let expanded = [];
 
     const dragndropController = async (curr, prev) => {
         let new_tasks = tasks;
@@ -171,7 +172,7 @@ export const Tree = (props) => {
 
     const renderTreeNode = (node) => {
         const nodeId = node[0] === 'tempZone' ? "" : node[11];
-
+        expanded.push(nodeId)
         const handleDragEnd = (e) => {
             if (newParentNode !== undefined && node[0] === e.target.children[0].children[1].innerHTML && node[11] !== newParentNode[11]) {
                 // setCurrNode(node);
@@ -225,7 +226,7 @@ export const Tree = (props) => {
             <div className="resource_tree_container">
                 <div className="resource_tree">
                     <TreeView
-                        defaultExpanded={['1']}
+                        defaultExpanded={expanded}
                         defaultCollapseIcon={<MinusSquare />}
                         defaultExpandIcon={<PlusSquare />}
                         defaultEndIcon={<CloseSquare />}
