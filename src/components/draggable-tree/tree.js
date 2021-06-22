@@ -74,6 +74,7 @@ export const Tree = (props) => {
     const [currNode, setCurrNode] = useState();
     const [confirmDialog, setConfirmDialog] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
+    const [hasError, setHasError] = useState(false);
     let expanded = [];
 
     const dragndropController = async (curr, prev) => {
@@ -88,7 +89,7 @@ export const Tree = (props) => {
 
         addChild(newParentNode, currNode);
 
-        new_tasks.push([currNode, prevParentNode, newParentNode, 'pending']);
+        new_tasks.push([currNode, prevParentNode, newParentNode, 'pending', 'pending']);
     }
 
     const runTask = () => {
@@ -100,25 +101,35 @@ export const Tree = (props) => {
                     if (task[1][0] !== 'tempZone') {
                         const remove_child_result = await RemoveChildRescourceController(task[1][0], task[0][0], restApiLocation);
                         console.log(remove_child_result);
+                        task[3] = 'success'
                     }
+                    else {
+                        task[3] = 'success'
+                    }
+                }
+                catch (e) {
+                    task[3] = 'failed'
+                    setHasError(true)
+                    break;
+                }
+                setTasks(tasks_copy)
+                try {
                     if (task[2][0] !== 'tempZone') {
                         const add_child_result = await AddChildRescourceController(task[2][0], task[0][0], restApiLocation);
                         console.log(add_child_result);
+                        task[4] = 'success'
+                    }
+                    else {
+                        task[4] = 'success'
                     }
                 } catch (e) {
-                    status = false;
-                }
-                if (status) task[3] = 'success'
-                else {
-                    task[3] = 'failed'
-                    setTasks(tasks_copy)
-                    setIsComplete(false)
+                    task[4] = 'failed'
+                    setHasError(true)
                     break;
                 }
+                setTasks(tasks_copy)
             }
-            setTasks(tasks_copy)
             setIsComplete(true)
-            setTimeout(() => window.location.reload(), 1000)
         })()
     }
 
@@ -270,17 +281,25 @@ export const Tree = (props) => {
                             {task[0][0]} parent: {task[1][0]} -> {task[2][0]}
                         </div>)}
                     </div>
-                    <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}>
+                    <Dialog open={confirmDialog}>
                         <DialogTitle>Are you sure to make the following changes? </DialogTitle>
                         <DialogContent>
-                            {tasks.map((task, index) => <div className="resource_tree_parent_info">
-                                <span>{task[0][0]} parent: {task[1][0]} -> {task[2][0]}</span>
-                                {task[3] === 'pending' ? <span className="resource_tree_status">Awaiting</span> : (task[3] === 'success' ? <span className="green resource_tree_status">Complete</span> : <span className="red resource_tree_status">Failed</span>)}
+                            {tasks.map((task, index) => <div><b>{task[0][0]}</b>
+                                <div className="resource_tree_parent_info">
+                                    <span> Remove previous parent: {task[1][0]}</span>
+                                    {task[3] === 'pending' ? <span className="resource_tree_status">Awaiting</span> : (task[3] === 'success' ? <span className="green resource_tree_status">Complete</span> : <span className="red resource_tree_status">Failed</span>)}
+                                </div>
+                                <div className="resource_tree_parent_info">
+                                    <span> Add new parent: {task[2][0]}</span>
+                                    {task[4] === 'pending' ? <span className="resource_tree_status">Awaiting</span> : (task[4] === 'success' ? <span className="green resource_tree_status">Complete</span> : <span className="red resource_tree_status">Failed</span>)}
+                                </div>
                             </div>
                             )}
                         </DialogContent>
-                        {isComplete ? <span className="resource_tree_status">Refreshing your page...</span> : ""}
-                        <DialogActions><Button color="primary" onClick={runTask}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>
+                        <br />
+                        {!hasError && isComplete ? <span className="resource_tree_status">Operation success. </span> : ""}
+                        {hasError && isComplete ? <span className="resource_tree_status">Operation failed. Please see the error message above.</span> : ""}
+                        {isComplete ? <DialogActions><Button color="primary" onClick={() => {setConfirmDialog(false); window.location.reload();}}>Close</Button></DialogActions> : <DialogActions><Button color="primary" onClick={runTask}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>}
                     </Dialog>
                 </div>
             </div>

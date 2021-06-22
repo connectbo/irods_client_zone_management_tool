@@ -128,6 +128,7 @@
 
 .resource_tree_parent_info {
     display: flex;
+    padding-left: 10px;
     justify-content: space-between;
 }
 
