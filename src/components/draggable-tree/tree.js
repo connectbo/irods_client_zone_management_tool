@@ -10,7 +10,7 @@ import SaveIcon from '@material-ui/icons/Save';
 import LowPriorityIcon from '@material-ui/icons/LowPriority';
 import { useEnvironment } from '../../contexts/EnvironmentContext';
 import { AddChildRescourceController, RemoveChildRescourceController } from '../../controllers/ResourceController';
-import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@material-ui/core';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@material-ui/core';
 
 function MinusSquare(props) {
     return (
@@ -70,6 +70,8 @@ export const Tree = (props) => {
     const [redo, setRedo] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [newParentNode, setNewParentNode] = useState();
+    const [targetNode, setTargetNode] = useState();
+    const [currNode, setCurrNode] = useState();
     const [confirmDialog, setConfirmDialog] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
     let expanded = [];
@@ -183,14 +185,38 @@ export const Tree = (props) => {
             }
         }
 
+        const handleDragStart = (e) => {
+            if (e.target.children[0].children[1].innerHTML === node[0]) {
+                console.log("Drag start " + node[0])
+                setCurrNode(node);
+            }
+        }
+
         const handleDragOver = (e) => {
             e.preventDefault();
+            if (e.target.innerHTML === node[0]) {
+                setTargetNode(node);
+
+                console.log("Drag over " + node[0]);
+            }
+        }
+
+        const handleDragEnter = (e) => {
+            console.log("Drag enter " + node[0])
+            e.target.style.background = "#CDCDCD";
+        }
+
+        const handleDragLeave = (e) => {
+            e.target.style.background = "";
         }
 
         const handleDrop = (e) => {
             if (e.target.innerHTML === node[0]) {
                 setNewParentNode(node);
+                e.target.style.background = "";
                 console.log("Drop at " + node[11])
+                setCurrNode();
+                setTargetNode();
             }
         }
 
@@ -199,8 +225,11 @@ export const Tree = (props) => {
                 nodeId={nodeId}
                 label={node[0]}
                 draggable={node[11] === '' ? false : true}
+                onDragEnter={e => handleDragEnter(e)}
                 onDragEnd={e => handleDragEnd(e)}
                 onDragOver={e => handleDragOver(e)}
+                onDragStart={e => handleDragStart(e)}
+                onDragLeave={e => handleDragLeave(e)}
                 onDrop={(e) => handleDrop(e)}>
                 {stagedChildrenMap.has(nodeId) && stagedChildrenMap.get(nodeId).map(children => renderTreeNode(children))}
             </StyledTreeItem>
@@ -223,6 +252,7 @@ export const Tree = (props) => {
                 </div>
             </div>
             <hr />
+            {currNode && targetNode ? <div>Dragging {currNode[0]} over {targetNode[0]}</div> : <div>Resource Hierachy</div>}
             <div className="resource_tree_container">
                 <div className="resource_tree">
                     <TreeView
@@ -254,6 +284,6 @@ export const Tree = (props) => {
                     </Dialog>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
