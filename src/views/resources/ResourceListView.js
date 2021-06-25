@@ -17,6 +17,7 @@ import Pagination from '@material-ui/lab/Pagination';
 import SaveIcon from '@material-ui/icons/Save';
 import CloseIcon from '@material-ui/icons/Close';
 import { useServer } from '../../contexts/ServerContext';
+import { useEnvironment } from '../../contexts/EnvironmentContext';
 import '../../App.css';
 import ResourceRows from '../../components/ResourceRows';
 import ListIcon from '@material-ui/icons/List';
@@ -118,7 +119,7 @@ function ResourceListView() {
 
     const [filterRescName, setFilterName] = useState('');
 
-
+    const { restApiLocation } = useEnvironment();
     const { zoneName, rescContext, loadResource } = useServer();
 
     useEffect(() => {
