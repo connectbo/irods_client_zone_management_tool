@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import SvgIcon from '@material-ui/core/SvgIcon';
-import TreeView from '@material-ui/lab/TreeView';
+import { Alert, AlertTitle, TreeView } from '@material-ui/lab';
 import { StyledTreeItem } from './tree-item';
-import { Badge, Button } from '@material-ui/core';
+import { Badge, Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, SvgIcon } from '@material-ui/core';
+import CloseIcon from '@material-ui/icons/Close';
 import UndoIcon from '@material-ui/icons/Undo'
 import RedoIcon from '@material-ui/icons/Redo';
 import ReplayIcon from '@material-ui/icons/Replay';
@@ -10,7 +10,6 @@ import SaveIcon from '@material-ui/icons/Save';
 import LowPriorityIcon from '@material-ui/icons/LowPriority';
 import { useEnvironment } from '../../contexts/EnvironmentContext';
 import { AddChildRescourceController, RemoveChildRescourceController } from '../../controllers/ResourceController';
-import { Dialog, DialogActions, DialogContent, DialogTitle } from '@material-ui/core';
 
 function MinusSquare(props) {
     return (
@@ -58,6 +57,25 @@ function reviver(key, value) {
     return value;
 }
 
+const checkIfDescendent = (node, target, map) => {
+    const nodeId = node[11];
+    let isDescendent = false;
+    console.log("checking " + node[0])
+    if (!map.has(nodeId)) return isDescendent;
+    else {
+        const descendents = map.get(nodeId);
+        for (let i = 0; i < descendents.length; i++) {
+            console.log("checking " + descendents[i][0])
+            if (descendents[i][11] == target[11]) {
+                return true;
+            }
+            if (map.has(descendents[i][11])) {
+                isDescendent = isDescendent || checkIfDescendent(descendents[i], target, map)
+            }
+        }
+    }
+    return isDescendent;
+}
 
 export const Tree = (props) => {
     let childrenMap = props.children;
@@ -75,21 +93,30 @@ export const Tree = (props) => {
     const [confirmDialog, setConfirmDialog] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [alertOpen, setAlertOpen] = useState(false);
     let expanded = [];
 
     const dragndropController = async (curr, prev) => {
+        setAlertOpen(false);
         let new_tasks = tasks;
         let currNode = curr;
         let prevParentNode = prev;
         console.log("moving " + currNode[11] + " prev parent " + prevParentNode[11] + " new parent " + newParentNode[11])
 
-        updateParentID(currNode, newParentNode);
+        // console.log("checking if descendents: " + checkIfDescendents(currNode, newParentNode, stagedChildrenMap));
 
-        removeChild(prevParentNode, currNode);
+        if (newParentNode[11] !== prevParentNode[11] && !checkIfDescendent(currNode, newParentNode, stagedChildrenMap)) {
+            updateParentID(currNode, newParentNode);
 
-        addChild(newParentNode, currNode);
+            removeChild(prevParentNode, currNode);
 
-        new_tasks.push([currNode, prevParentNode, newParentNode, 'pending', 'pending']);
+            addChild(newParentNode, currNode);
+
+            new_tasks.push([currNode, prevParentNode, newParentNode, 'pending', 'pending']);
+        }
+        else {
+            setAlertOpen(true);
+        }
     }
 
     const runTask = () => {
@@ -161,6 +188,7 @@ export const Tree = (props) => {
     }
 
     const undoTask = () => {
+        setAlertOpen(false);
         let lastTask = tasks[tasks.length - 1];
         addChild(lastTask[1], lastTask[0])
         removeChild(lastTask[2], lastTask[0]);
@@ -177,6 +205,7 @@ export const Tree = (props) => {
     }
 
     const resetTree = () => {
+        setAlertOpen(false);
         setStagedDataMap(JSON.parse(originalDataMap, reviver));
         setStagedChildrenMap(JSON.parse(originalChildrenMap, reviver));
         setRedo([]);
@@ -187,7 +216,7 @@ export const Tree = (props) => {
         const nodeId = node[0] === 'tempZone' ? "" : node[11];
         expanded.push(nodeId)
         const handleDragEnd = (e) => {
-            if (newParentNode !== undefined && node[0] === e.target.children[0].children[1].innerHTML && node[11] !== newParentNode[11]) {
+            if (newParentNode !== undefined && e.target !== undefined && e.target.children[0] !== undefined && e.target.children[0].children[1] !== undefined && node[0] === e.target.children[0].children[1].innerHTML && node[11] !== newParentNode[11]) {
                 // setCurrNode(node);
                 // setPrevParentNode(dataMap.get(node[10]));
                 dragndropController(node, stagedDataMap.get(node[10]));
@@ -197,8 +226,8 @@ export const Tree = (props) => {
         }
 
         const handleDragStart = (e) => {
-            if (e.target.children[0].children[1].innerHTML === node[0]) {
-                console.log("Drag start " + node[0])
+            if (e.target !== undefined && e.target.children[0] !== undefined && e.target.children[0].children[1] !== undefined && e.target.children[0].children[1].innerHTML === node[0]) {
+                // console.log("Drag start " + node[0])
                 setCurrNode(node);
             }
         }
@@ -207,13 +236,10 @@ export const Tree = (props) => {
             e.preventDefault();
             if (e.target.innerHTML === node[0]) {
                 setTargetNode(node);
-
-                console.log("Drag over " + node[0]);
             }
         }
 
         const handleDragEnter = (e) => {
-            console.log("Drag enter " + node[0])
             e.target.style.background = "#CDCDCD";
         }
 
@@ -222,7 +248,7 @@ export const Tree = (props) => {
         }
 
         const handleDrop = (e) => {
-            if (e.target.innerHTML === node[0]) {
+            if (e.target !== undefined && e.target.innerHTML === node[0]) {
                 setNewParentNode(node);
                 e.target.style.background = "";
                 console.log("Drop at " + node[11])
@@ -263,6 +289,19 @@ export const Tree = (props) => {
                 </div>
             </div>
             <hr />
+            <Collapse in={alertOpen}>
+                <Alert
+                    severity="error"
+                    action={
+                        <IconButton
+                            aria-label="close"
+                            color="inherit"
+                            size="small"
+                            onClick={() => setAlertOpen(false)}
+                        ><CloseIcon /></IconButton>
+                    }
+                >Your move is invalid.</Alert>
+            </Collapse>
             {currNode && targetNode ? <div>Dragging {currNode[0]} over {targetNode[0]}</div> : <div>Resource Hierachy</div>}
             <div className="resource_tree_container">
                 <div className="resource_tree">
@@ -299,7 +338,7 @@ export const Tree = (props) => {
                         <br />
                         {!hasError && isComplete ? <span className="resource_tree_status">Operation success. </span> : ""}
                         {hasError && isComplete ? <span className="resource_tree_status">Operation failed. Please see the error message above.</span> : ""}
-                        {isComplete ? <DialogActions><Button color="primary" onClick={() => {setConfirmDialog(false); window.location.reload();}}>Close</Button></DialogActions> : <DialogActions><Button color="primary" onClick={runTask}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>}
+                        {isComplete ? <DialogActions><Button color="primary" onClick={() => { setConfirmDialog(false); window.location.reload(); }}>Close</Button></DialogActions> : <DialogActions><Button color="primary" onClick={runTask}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>}
                     </Dialog>
                 </div>
             </div>
