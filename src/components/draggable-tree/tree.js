@@ -282,7 +282,7 @@ export const Tree = (props) => {
                         <br />
                         {!hasError && isComplete ? <span className="resource_tree_status">Operation success. </span> : ""}
                         {hasError && isComplete ? <span className="resource_tree_status">Operation failed. Please see the error message above.</span> : ""}
-                        {isComplete ? <DialogActions><Button color="primary" onClick={() => { setConfirmDialog(false); window.location.reload(); }}>Close</Button></DialogActions> : <DialogActions><Button color="primary" onClick={runTask}>Yes</Button><Button color="secondary" onClick={() => setConfirmDialog(false)}>No</Button></DialogActions>}
+                        {isComplete ? <DialogActions><Button color="primary" onClick={() => { setConfirmDialog(false); window.location.reload(); }}>Close</Button></DialogActions> : <DialogActions><Button style={{ marginRight: '20px' }} color="secondary" onClick={() => setConfirmDialog(false)}>No</Button><Button color="primary" onClick={runTask}>Yes</Button></DialogActions>}
                     </Dialog>
                 </div>
             </div>
