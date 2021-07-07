@@ -72,6 +72,10 @@
     color: #ff0000
 }
 
+.grey_out {
+    opacity: 0.4;
+}
+
 .hidden {
     display: none;
 }
