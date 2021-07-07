@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, AlertTitle, TreeView } from '@material-ui/lab';
 import { StyledTreeItem } from './tree-item';
-import { Badge, Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, SvgIcon } from '@material-ui/core';
+import { Badge, Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, IconButton } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
 import UndoIcon from '@material-ui/icons/Undo'
 import RedoIcon from '@material-ui/icons/Redo';
@@ -10,52 +10,8 @@ import SaveIcon from '@material-ui/icons/Save';
 import LowPriorityIcon from '@material-ui/icons/LowPriority';
 import { useEnvironment } from '../../contexts/EnvironmentContext';
 import { AddChildRescourceController, RemoveChildRescourceController } from '../../controllers/ResourceController';
-
-function MinusSquare(props) {
-    return (
-        <SvgIcon fontSize="inherit" style={{ width: 14, height: 14 }} {...props}>
-            {/* tslint:disable-next-line: max-line-length */}
-            <path d="M22.047 22.074v0 0-20.147 0h-20.12v0 20.147 0h20.12zM22.047 24h-20.12q-.803 0-1.365-.562t-.562-1.365v-20.147q0-.776.562-1.351t1.365-.575h20.147q.776 0 1.351.575t.575 1.351v20.147q0 .803-.575 1.365t-1.378.562v0zM17.873 11.023h-11.826q-.375 0-.669.281t-.294.682v0q0 .401.294 .682t.669.281h11.826q.375 0 .669-.281t.294-.682v0q0-.401-.294-.682t-.669-.281z" />
-        </SvgIcon>
-    );
-}
-
-function PlusSquare(props) {
-    return (
-        <SvgIcon fontSize="inherit" style={{ width: 14, height: 14 }} {...props}>
-            {/* tslint:disable-next-line: max-line-length */}
-            <path d="M22.047 22.074v0 0-20.147 0h-20.12v0 20.147 0h20.12zM22.047 24h-20.12q-.803 0-1.365-.562t-.562-1.365v-20.147q0-.776.562-1.351t1.365-.575h20.147q.776 0 1.351.575t.575 1.351v20.147q0 .803-.575 1.365t-1.378.562v0zM17.873 12.977h-4.923v4.896q0 .401-.281.682t-.682.281v0q-.375 0-.669-.281t-.294-.682v-4.896h-4.923q-.401 0-.682-.294t-.281-.669v0q0-.401.281-.682t.682-.281h4.923v-4.896q0-.401.294-.682t.669-.281v0q.401 0 .682.281t.281.682v4.896h4.923q.401 0 .682.281t.281.682v0q0 .375-.281.669t-.682.294z" />
-        </SvgIcon>
-    );
-}
-
-function CloseSquare(props) {
-    return (
-        <SvgIcon className="close" fontSize="inherit" style={{ width: 14, height: 14 }} {...props}>
-            {/* tslint:disable-next-line: max-line-length */}
-            <path d="M17.485 17.512q-.281.281-.682.281t-.696-.268l-4.12-4.147-4.12 4.147q-.294.268-.696.268t-.682-.281-.281-.682.294-.669l4.12-4.147-4.12-4.147q-.294-.268-.294-.669t.281-.682.682-.281.696 .268l4.12 4.147 4.12-4.147q.294-.268.696-.268t.682.281 .281.669-.294.682l-4.12 4.147 4.12 4.147q.294.268 .294.669t-.281.682zM22.047 22.074v0 0-20.147 0h-20.12v0 20.147 0h20.12zM22.047 24h-20.12q-.803 0-1.365-.562t-.562-1.365v-20.147q0-.776.562-1.351t1.365-.575h20.147q.776 0 1.351.575t.575 1.351v20.147q0 .803-.575 1.365t-1.378.562v0z" />
-        </SvgIcon>
-    );
-}
-
-function replacer(key, value) {
-    if (value instanceof Map) {
-        return {
-            dataType: 'Map',
-            value: Array.from(value.entries()), // or with spread: value: [...value]
-        };
-    } else {
-        return value;
-    }
-}
-function reviver(key, value) {
-    if (typeof value === 'object' && value !== null) {
-        if (value.dataType === 'Map') {
-            return new Map(value.value);
-        }
-    }
-    return value;
-}
+import { MinusSquare, PlusSquare } from '../../icons';
+import { replacer, reviver } from '../../utils';
 
 const checkIfDescendent = (node, target, map) => {
     const nodeId = node[11];
@@ -101,17 +57,10 @@ export const Tree = (props) => {
         let new_tasks = tasks;
         let currNode = curr;
         let prevParentNode = prev;
-        console.log("moving " + currNode[11] + " prev parent " + prevParentNode[11] + " new parent " + newParentNode[11])
-
-        // console.log("checking if descendents: " + checkIfDescendents(currNode, newParentNode, stagedChildrenMap));
-
         if (newParentNode[11] !== prevParentNode[11] && !checkIfDescendent(currNode, newParentNode, stagedChildrenMap)) {
             updateParentID(currNode, newParentNode);
-
             removeChild(prevParentNode, currNode);
-
             addChild(newParentNode, currNode);
-
             new_tasks.push([currNode, prevParentNode, newParentNode, 'pending', 'pending']);
         }
         else {
@@ -123,7 +72,6 @@ export const Tree = (props) => {
         const tasks_copy = [...tasks];
         (async function asyncProcessTask() {
             for (let task of tasks_copy) {
-                let status = true;
                 try {
                     if (task[1][0] !== 'tempZone') {
                         const remove_child_result = await RemoveChildRescourceController(task[1][0], task[0][0], restApiLocation);
@@ -217,17 +165,12 @@ export const Tree = (props) => {
         expanded.push(nodeId)
         const handleDragEnd = (e) => {
             if (newParentNode !== undefined && e.target !== undefined && e.target.children[0] !== undefined && e.target.children[0].children[1] !== undefined && node[0] === e.target.children[0].children[1].innerHTML && node[11] !== newParentNode[11]) {
-                // setCurrNode(node);
-                // setPrevParentNode(dataMap.get(node[10]));
                 dragndropController(node, stagedDataMap.get(node[10]));
-                // setConfirmDialog(true);
-                console.log("Drag start " + node[11])
             }
         }
 
         const handleDragStart = (e) => {
             if (e.target !== undefined && e.target.children[0] !== undefined && e.target.children[0].children[1] !== undefined && e.target.children[0].children[1].innerHTML === node[0]) {
-                // console.log("Drag start " + node[0])
                 setCurrNode(node);
             }
         }
@@ -251,7 +194,6 @@ export const Tree = (props) => {
             if (e.target !== undefined && e.target.innerHTML === node[0]) {
                 setNewParentNode(node);
                 e.target.style.background = "";
-                console.log("Drop at " + node[11])
                 setCurrNode();
                 setTargetNode();
             }
@@ -309,7 +251,7 @@ export const Tree = (props) => {
                         defaultExpanded={expanded}
                         defaultCollapseIcon={<MinusSquare />}
                         defaultExpandIcon={<PlusSquare />}
-                        defaultEndIcon={<CloseSquare />}
+                        defaultEndIcon={<MinusSquare className="grey_out" />}
                     >{renderTreeNode(stagedDataMap.get(""))}
                     </TreeView>
                 </div>
