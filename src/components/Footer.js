@@ -32,7 +32,7 @@ function Footer() {
                 </DialogContent>
             </Dialog>
             <div>{connection.connection ? <div className="green_dot"></div> : <div className="red_dot"></div>} <a className="pointer" onClick={() => setConnectionForm(true)}>iRODS Client REST API Connection</a></div>
-            <div><img alt="iRODS Icon" className="app_footer_logo" src={logo}></img><a href="https://irods.org" className="app_footer_text">iRODS Consortium © 2021</a></div>
+            <div><img alt="iRODS Icon" className="app_footer_logo" src={logo}></img><a href="https://irods.org" className="app_footer_text" target="_blank" rel="noreferrer">iRODS Consortium © 2021</a></div>
             <div>Zone Management Tool Version: {version}, {process.env.REACT_APP_GIT_SHA.substring(0, 7)}</div>
         </div>
     )
