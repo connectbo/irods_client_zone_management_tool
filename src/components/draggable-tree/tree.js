@@ -57,14 +57,16 @@ export const Tree = (props) => {
         let new_tasks = tasks;
         let currNode = curr;
         let prevParentNode = prev;
-        if (newParentNode[11] !== prevParentNode[11] && !checkIfDescendent(currNode, newParentNode, stagedChildrenMap)) {
-            updateParentID(currNode, newParentNode);
-            removeChild(prevParentNode, currNode);
-            addChild(newParentNode, currNode);
-            new_tasks.push([currNode, prevParentNode, newParentNode, 'pending', 'pending']);
-        }
-        else {
-            setAlertOpen(true);
+        if (newParentNode[11] !== prevParentNode[11]) {
+            if (!checkIfDescendent(currNode, newParentNode, stagedChildrenMap)) {
+                updateParentID(currNode, newParentNode);
+                removeChild(prevParentNode, currNode);
+                addChild(newParentNode, currNode);
+                new_tasks.push([currNode, prevParentNode, newParentNode, 'pending', 'pending']);
+            }
+            else {
+                setAlertOpen(true);
+            }
         }
     }
 
