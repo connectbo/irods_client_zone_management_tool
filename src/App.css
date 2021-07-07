@@ -1,9 +1,5 @@
 .MuiTableSortLabel-icon { opacity: 0.2; }
 
-a {
-    text-decoration: none;
-}
-
 .app_body {
     min-height: 100%;
     display: flex;
@@ -29,6 +25,7 @@ a {
 
 .app_footer_text{
     color: black;
+    text-decoration: none;
 }
 
 .app_wrap {
